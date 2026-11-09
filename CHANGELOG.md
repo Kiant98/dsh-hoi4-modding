@@ -1,5 +1,17 @@
 # 更新日志
 
+## 3.2.0（2026-11-09）
+
+DeepSeek Harness 组合包版本。修 3.1.0 在 DSH 插件页报 `{"code":"not-bundle"}` 装不上的问题。
+
+- **组合包声明**：`package.json` 增加 `dsh.bundle.patch`、`type`/`main`/`exports`/`icon`、`engines`（dsh `>=0.2.0 <0.3.0`），新增根 `cordis.patch.yml` 与 `lib/index.js`。npm 包现在可以直接在 DSH 的 设置 → 插件 里安装/更新。
+- **技能自动注册**：`lib/index.js` 用 `ctx.skills.registerProvider` 注册 15 个技能（rank 600、按需读 `SKILL.md`，`resourceBase` 指向包内目录），不再需要手动拷贝技能文件。
+- **MCP 自动挂载**：插件启动时探测本机 `python`，以 stdio 挂载包内 `mcp-server/server.py`，20 个工具以 `mcp__kiant_hoi4_modkit__kiant_hoi4_*` 出现。可用插件配置 `{"python": "..."}` 指定解释器，`{"mcp": false}` 关闭工具挂载。
+- **健壮性**：宿主未提供插件解析时回退到 `app.asar` 内置的 mcp-client；python 探测失败只警告、不阻断技能注册；日志统一 `[dsh-hoi4-modding]` 前缀。
+- **图标**：随包分发 `icon.svg`。
+- **文档**：README 安装章节改为 DSH 插件页优先，目录树补 `lib/`、`cordis.patch.yml`、`icon.svg`，工具表补齐缺项；`plugin.json` 版本与描述同步。
+- 包内自检 330 项仍全绿。
+
 ## 3.1.0（2026-11-07）
 
 生态学习五轮之后的版本，重点是把「外部工具怎么做」变成可校验的规则与文档。

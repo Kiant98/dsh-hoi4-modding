@@ -4,7 +4,7 @@
 
 面向 HOI4 1.19.x（Operation Postern）。纯 Python 标准库，零依赖。
 
-> 当前版本 **3.1.0**（2026-11-07）。GitHub：[Kiant98/dsh-hoi4-modding](https://github.com/Kiant98/dsh-hoi4-modding) ｜ npm：[dsh-hoi4-modding](https://www.npmjs.com/package/dsh-hoi4-modding)
+> 当前版本 **3.2.0**（2026-11-09）。GitHub：[Kiant98/dsh-hoi4-modding](https://github.com/Kiant98/dsh-hoi4-modding) ｜ npm：[dsh-hoi4-modding](https://www.npmjs.com/package/dsh-hoi4-modding)
 
 ## 为什么做这个
 
@@ -168,23 +168,31 @@ kiant_hoi4_plan action=status   → 进度、下一步、依赖是否满足
 
 ### 安装
 
-三种方式，拿到的是同一份内容：
+四种方式，拿到的是同一份内容。3.2.0 起 npm 包同时是 DeepSeek Harness 组合包（`dsh.bundle.patch` + `cordis.patch.yml` + `lib/index.js`），所以可以直接在 DSH 插件页安装：
+
+**方式一：在 DeepSeek Harness 里装（推荐；3.2.0 起）**
+
+设置 → 插件 → 搜索 `dsh-hoi4-modding` → 安装（已装过就点更新到 3.2.0），然后重开会话。装好后：
+
+- 15 个技能自动出现在技能列表，按需触发，不用手动拷贝 `SKILL.md`；
+- 20 个工具自动挂载为 `mcp__kiant_hoi4_modkit__kiant_hoi4_*`，由包内 `lib/index.js` 用本机 `python` 起 `mcp-server/server.py`（stdio）；
+- 首次加载会探测 `python`/`python3`（需要 3.9+，零第三方依赖）。要指定解释器，把插件配置设成 `{"python": "C:/path/to/python.exe"}`；不想挂工具就设 `{"mcp": false}`。
 
 ```bash
-# 方式一：git clone
+# 方式二：git clone
 git clone https://github.com/Kiant98/dsh-hoi4-modding.git dsh-hoi4-modding
 cd dsh-hoi4-modding
 
-# 方式二：下载 Release 附件 dsh-hoi4-modding-3.1.0.zip
-unzip dsh-hoi4-modding-3.1.0.zip -d dsh-hoi4-modding
+# 方式三：下载 Release 附件 dsh-hoi4-modding-3.2.0.zip
+unzip dsh-hoi4-modding-3.2.0.zip -d dsh-hoi4-modding
 cd dsh-hoi4-modding
 
-# 方式三：从 npm 安装（3.1.0 起）
+# 方式四：从 npm 安装（3.1.0 起）
 npm install dsh-hoi4-modding        # 装进当前目录的 node_modules
 npm pack dsh-hoi4-modding           # 或者只取 tarball 自己解压
 ```
 
-npm 全局安装（npm i -g dsh-hoi4-modding）后，工具包在 npm 全局 node_modules/dsh-hoi4-modding/（Windows 通常是 %APPDATA%\npm\node_modules），下文出现的 mcp-server/server.py 都指这个目录下的路径。
+npm 全局安装（npm i -g dsh-hoi4-modding）后，工具包在 npm 全局 node_modules/dsh-hoi4-modding/（Windows 通常是 %APPDATA%\npm\node_modules），下文出现的 mcp-server/server.py 都指这个目录下的路径。不走 DSH 的用法（手动跑 MCP、接别的客户端）完全不受影响。
 
 装好后先确认能跑：
 
@@ -344,12 +352,15 @@ agent → kiant_hoi4_kb_lookup kind=focus           看原版国策树结构
 | `kiant_hoi4_find_duplicate_ids` | 查重复定义 |
 | `kiant_hoi4_parse_script` | Clausewitz → JSON，支持下钻 |
 | `kiant_hoi4_analyze_error_log` | 日志聚类分类 |
+| `kiant_hoi4_error_book` | 按症状查错题本（24 条实证踩坑） |
+| `kiant_hoi4_solutions` | 查方案库（10 条，按验证状态标记） |
 | `kiant_hoi4_list_overrides` | 覆盖范围比对 |
 | `kiant_hoi4_kb_build` | 建/更新索引 |
 | `kiant_hoi4_kb_search` | 全文检索 |
 | `kiant_hoi4_kb_lookup` | 取真实范例 |
 | `kiant_hoi4_kb_symbol` | 追符号定义 |
 | `kiant_hoi4_kb_note` | 补充本地笔记 |
+| `kiant_hoi4_kb_sync` | 从远端仓库同步知识库 |
 | `kiant_hoi4_kb_stats` | 索引现状 |
 | `kiant_hoi4_preview` | 生成离线 HTML |
 | `kiant_hoi4_plan` | 分阶段跟踪 |
@@ -358,7 +369,7 @@ agent → kiant_hoi4_kb_lookup kind=focus           看原版国策树结构
 
 `mod-skeleton` · `clausewitz-script` · `localisation` · `focus-tree` · `events-decisions` · `technology` · `models-3d` · `ui-interface` · `game-framework` · `gfx-interface` · `debug-validate` · `compat-release` · `knowledge-base` · `planning` · `validator-trust`
 
-按需自动触发。写的是「哪里会出错」和「怎么判断」，不是教程。
+DSH 组合包装好后会自动注册这 15 个技能，不用手动拷贝。按需自动触发；写的是「哪里会出错」和「怎么判断」，不是教程。
 
 ## 目录
 
@@ -367,6 +378,9 @@ agent → kiant_hoi4_kb_lookup kind=focus           看原版国策树结构
 ```
 dsh-hoi4-modding/
 ├── plugin.json              跨平台能力清单（版本/技能/工具/资源的唯一真相来源）
+├── cordis.patch.yml         DSH 组合包补丁：把本包挂成插件行
+├── lib/index.js             DSH 入口：注册 15 个技能 + 挂载 MCP 服务器
+├── icon.svg                 插件图标
 ├── README.md                本文件
 ├── STRUCTURE.md             组织架构：每层每文件干嘛用 + 改东西时改哪
 ├── ARCHITECTURE.md          五层架构、数据流、扩展点

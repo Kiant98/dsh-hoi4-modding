@@ -1,0 +1,5 @@
+# DeepSeek Harness 组合包 patch：把本包的 ESM 入口挂成一条插件行。
+# 入口同时注册 15 个技能，并通过 @deepseek-ai/dsh-mcp-client 起 python MCP 服务器（20 个工具）。
+- insert:
+    - id: hoi4-modding
+      name: dsh-hoi4-modding

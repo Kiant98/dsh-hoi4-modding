@@ -1,13 +1,13 @@
 # 交接文件（HANDOVER）
 
 > 写给接手本项目的人（或未来的自己）。读完这一篇 + `STRUCTURE.md` + `ARCHITECTURE.md`，你就能安全地开始改代码。
-> 交接日期：2026-11-07 ｜ 当前版本：3.1.0 ｜ 自检 330/330 全绿 ｜ 变异 17/17 ｜ 发布：GitHub tag v3.1.0 + npm dsh-hoi4-modding@3.1.0
+> 交接日期：2026-11-09 ｜ 当前版本：3.2.0 ｜ 自检 330/330 全绿 ｜ 变异 17/17 ｜ 发布：GitHub tag v3.2.0 + npm dsh-hoi4-modding@3.2.0（DeepSeek Harness 组合包）
 
 ---
 
 ## 一、项目一句话
 
-**dsh-hoi4-modding**：HOI4 mod 开发的 MCP 工具。20 个工具（校验/知识库/脚手架/预览/排障），纯 Python 标准库零依赖，16 个模块 9929 行 + 194 篇文档。校验器全部对照原版 1.19.4.2 全量实证。
+**dsh-hoi4-modding**：HOI4 mod 开发的 DeepSeek Harness 组合包 + MCP 工具。装进 DSH 后自动注册 15 个技能、挂载 20 个工具（校验/知识库/脚手架/预览/排障），纯 Python 标准库零依赖；16 个模块 9929 行 + 194 篇文档。校验器全部对照原版 1.19.4.2 全量实证。
 
 ## 二、代码地图（改哪去哪）
 
@@ -21,6 +21,8 @@
 | `selftest.py` | 2105 | 330 项断言。**文档数字一致性也在里面**（篇数/行数/条数漂移会被抓） | 低 |
 | `scaffolder/preview/planner/remote/playbook` | ~2000 | 生成/预览/计划/远端同步/错题本检索 | 低-中 |
 | `tools/` 4 个脚本 | — | dds 体积校验（块数必须 `(w+3)//4` 向上取整）/ lint / survey / mutate | 低 |
+| `lib/index.js` | ~230 | DSH 入口：`ctx.skills.registerProvider` 注册 15 个技能；探测 python 后用内置 mcp-client 挂 `mcp-server/server.py`。**改了它要实际装一次插件验证** | 中 |
+| `cordis.patch.yml` | 4 | DSH 组合包补丁（insert 一行 `dsh-hoi4-modding`），配合 `package.json#dsh.bundle.patch`；缺了就会报 `not-bundle` | 低 |
 
 **三条铁律**（都是从真实事故里来的，详见 `references/99_plugin-devlog/`）：
 
@@ -38,7 +40,7 @@ python mcp-server/selftest.py
 python tools/kiant-hoi4-mutate.py
 
 # 3. 打包（220+ 文件；FORBIDDEN 清单自动从当前环境生成，出现本机信息会整体失败）
-python ../_pack.py 3.1.0
+python ../_pack.py 3.2.0
 
 # 4. 资料库同步（WorkBuddy 资料库，只同步 .md）
 python ../_resync.py <改过的路径...>      # 旧节点自动归档后重传
@@ -65,11 +67,11 @@ python ../_verify_library.py              # 双向核对：必须「完全一致
 
 ## 五、当前状态与遗留清单
 
-**已完成**：3.1.0 已完成开发（生态学习五轮：CWTools/GitHub 图谱/四大 VS Code 插件/AI agent 工具/解析库/独立工具/大型 mod 官方仓，新增 focus_tree 与 loc_commands 校验器共 10 个、93_ecosystem 8 篇解剖、cw.py 跨游戏写法三修；待打包）；3.0.1 已交付（3.0.0 之上的 bug 修复 + 23 个工坊 mod 学习轮：music 校验器、EB-022~025、`93_ecosystem/mod-maintenance-engineering.md` 与五处域文档扩写；详见交付说明）；3.0.0 已交付（`交付-kiant-hoi4-modkit-3.0.0/`，含交付说明）；官方 wiki 10 页已学习并分发进 7 篇域文档。
+**已完成**：3.2.0 已完成（DSH 组合包：`package.json#dsh.bundle.patch` + 根 `cordis.patch.yml` + `lib/index.js`；15 个技能自动注册、20 个工具自动挂载，修掉插件页 `not-bundle`；已在本地用真实 Cordis 服务栈验证 20 工具 + 15 技能注册）；3.1.0 已完成开发（生态学习五轮：CWTools/GitHub 图谱/四大 VS Code 插件/AI agent 工具/解析库/独立工具/大型 mod 官方仓，新增 focus_tree 与 loc_commands 校验器共 10 个、93_ecosystem 8 篇解剖、cw.py 跨游戏写法三修；待打包）；3.0.1 已交付（3.0.0 之上的 bug 修复 + 23 个工坊 mod 学习轮：music 校验器、EB-022~025、`93_ecosystem/mod-maintenance-engineering.md` 与五处域文档扩写；详见交付说明）；3.0.0 已交付（`交付-kiant-hoi4-modkit-3.0.0/`，含交付说明）；官方 wiki 10 页已学习并分发进 7 篇域文档。
 
 **待办（按优先级）**：
 
-1. **GitHub 仓库**：已建 https://github.com/Kiant98/dsh-hoi4-modding（`master` 为 3.1.0 源码，`v3.1.0` tag + Release 附件）。发版步骤：改 `package.json` 版本号 → `git tag vX.Y.Z && git push origin vX.Y.Z` → `.github/workflows/release.yml` 用 npm Trusted Publishing（OIDC）自动发 npm，无需 token。
+1. **GitHub 仓库 / npm**：已建 https://github.com/Kiant98/dsh-hoi4-modding（`master` 为 3.2.0 源码，`v3.2.0` tag + Release 附件；npm 上 3.2.0 起是 DSH 组合包）。发版步骤：改 `package.json` 版本号 → `git tag vX.Y.Z && git push origin vX.Y.Z` → `.github/workflows/release.yml` 用 npm Trusted Publishing（OIDC）自动发 npm，无需 token。**发完必须验一遍 DSH 安装**：设置 → 插件 → 搜索 `dsh-hoi4-modding` → 安装/更新，重开会话后技能列表应有 15 项、工具应有 20 个 `mcp__kiant_hoi4_modkit__kiant_hoi4_*`。
 2. **未修 bug 六条**（见交付说明 §六，最值得先修的两个）：
    - `kb.py` `errors="replace"` 把 GBK 文件变 U+FFFD 且增量永不重试 → 建议回退解码链（utf-8-sig → cp1252 → gbk）并统计替换字符数
    - `remote.py` pull 先删旧缓存后校验 → 改 stage-then-switch
@@ -83,4 +85,4 @@ python mcp-server/server.py --call kiant_hoi4_kb_stats '{}'   # 应 69102 symbol
 python ../_verify_library.py                        # 应「完全一致且无重复」
 ```
 
-三条都过 = 环境正常，可以开始干活。改任何东西之前，先读一遍你要动的模块在 `99_plugin-devlog/` 里的相关条目——那里记的每一个坑都真实踩过一次。
+三条都过 = 环境正常，可以开始干活。DSH 侧再加一条：`设置 → 插件 → 搜索 dsh-hoi4-modding` 能装/更新到 3.2.0，且装完重开会话能看到 15 个技能和 20 个 `mcp__kiant_hoi4_modkit__*` 工具。若插件页提示「没有声明组合包」，先查 npm 上该版本 `package.json` 是否有 `dsh.bundle.patch`、包内是否有 `cordis.patch.yml` 与 `lib/index.js`。改任何东西之前，先读一遍你要动的模块在 `99_plugin-devlog/` 里的相关条目——那里记的每一个坑都真实踩过一次。
