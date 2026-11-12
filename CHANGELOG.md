@@ -1,5 +1,16 @@
 # 更新日志
 
+## 3.2.2（2026-11-12）
+
+文档与呈现升级，代码未改动。
+
+- **首屏截图**：README 顶部加入 `assets/screenshot-focus-tree.png` —— `kiant_hoi4_preview` 对 `examples/sample_mod` 的真实产物（1580×1500），不是示意图。
+- **三段真实输出**：新增「能做什么」章节，直接贴 `kiant_hoi4_validate_mod`（`broken_mod` 的 17 项缺陷与 5 条原文报错）、`kiant_hoi4_scaffold`（真实 created 列表）、`kiant_hoi4_preview`（真实 JSON 与截图）的命令与输出。
+- **中英双语**：README 顶部加语言切换行，新增 `README.en.md`（全文英译，结构与中文版逐节对应）。
+- **贡献指南**：新增 `CONTRIBUTING.md`（中英双语），写明可贡献的 7 类内容、`selftest.py` 330 项门槛、错题本与方案库的提交格式。
+- **社区入口**：README 新增「社区与贡献」段（Issues / Discussions / awesome-dsh-plugin 市场条目 / 更新日志 / 上游出处）。
+- **数字修正**：后加知识域 38 → 39 篇（34 正文 + 5 索引）；索引源 `refs` 148 → 163 篇。`package.json` / `plugin.json` 版本同步。
+
 ## 3.2.1（2026-11-12）
 
 DSH 插件市场（awesome-dsh-plugin）收录适配。只动元数据与文档，未触及脚本。

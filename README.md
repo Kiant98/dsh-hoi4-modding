@@ -1,12 +1,82 @@
 # dsh-hoi4-modding
 
+<p align="center"><b>中文</b> ｜ <a href="README.en.md">English</a></p>
+
 <p align="center"><img src="assets/icon-180.png" alt="dsh-hoi4-modding" width="96" height="96"></p>
+
+<p align="center">
+  <img src="assets/screenshot-focus-tree.png" alt="离线预览：6 个国策按真实 x/y 坐标渲染并画出前置连线" width="620">
+</p>
+
+<p align="center"><i><code>kiant_hoi4_preview</code> 用 <code>examples/sample_mod</code> 生成的自包含 HTML：不开游戏，国策树的真实形状、坐标重叠和缺失文本都在这里。</i></p>
 
 钢铁雄心4 的模组开发工具包。一个模组工程师 agent、15 个技能、20 个 MCP 工具，外加一套拿原版游戏当参照物的知识库。
 
 面向 HOI4 1.19.x（Operation Postern）。纯 Python 标准库，零依赖。
 
-> 当前版本 **3.2.1**（2026-11-12）。GitHub：[Kiant98/dsh-hoi4-modding](https://github.com/Kiant98/dsh-hoi4-modding) ｜ npm：[dsh-hoi4-modding](https://www.npmjs.com/package/dsh-hoi4-modding)
+> 当前版本 **3.2.2**（2026-11-12）。GitHub：[Kiant98/dsh-hoi4-modding](https://github.com/Kiant98/dsh-hoi4-modding) ｜ npm：[dsh-hoi4-modding](https://www.npmjs.com/package/dsh-hoi4-modding)
+
+## 能做什么：三段真实输出
+
+下面三段的命令和输出都来自仓库自带的 `examples/`，可直接复制运行（本机 Python 3.9+，零第三方依赖）。
+
+### 1. 抓出会静默失效的缺陷
+
+`examples/broken_mod` 是故意写坏的模组。跑一遍校验：
+
+```bash
+python mcp-server/server.py --call kiant_hoi4_validate_mod '{"mod_path":"examples/broken_mod"}'
+```
+
+```json
+"summary": { "errors": 6, "warnings": 5, "infos": 6, "total_issues": 17,
+             "verdict": "还有硬错误，进游戏会静默失效" }
+```
+
+其中几条带文件、行号和改法：
+
+```
+error  descriptor.mod                              supported_version="1.19.x" 格式不合法
+                                                    → 正确写法形如 "1.19.*" 或 "1.19.4"
+error  localisation/english/broken_l_english.yml    缺少 UTF-8 BOM
+                                                    → 整个文件会被引擎忽略
+error  common/ideologies/broken_ideologies.txt:2    unclosed block: reached end of file
+error  common/national_focus/broken_focus_dup.txt:7 focus id 'BAD_focus_a' 重复定义
+                                                    → 首次定义在 broken_focus.txt:11
+error  events/broken_events.txt:4                   事件命名空间 'BAD' 未在本文件声明
+```
+
+这些正是游戏不崩、也不一定进 `error.log`，只是静默丢掉的那类问题。
+
+### 2. 生成骨架
+
+```bash
+python mcp-server/server.py --call kiant_hoi4_scaffold \
+  '{"mod_path":"./demo","kind":"focus","name":"GER_demo_autobahn","tag":"GER","x":2,"y":2}'
+```
+
+```json
+"created": ["scaffold_demo/common/national_focus/ger_GER_demo_autobahn.txt",
+            "scaffold_demo/localisation/english/ger_GER_demo_autobahn_l_english.yml"],
+"next": "跑一遍 kiant_hoi4_validate_mod 确认没有缺本地化或语法错误。"
+```
+
+本地化自动带 BOM；国策的坐标、前置、完成奖励按 1.19 语法写全，不是空壳。
+
+### 3. 不开游戏看结构
+
+```bash
+python mcp-server/server.py --call kiant_hoi4_preview '{"mod_path":"examples/sample_mod"}'
+```
+
+```json
+{ "ok": true, "bytes": 9653,
+  "sections": { "focus": true, "events": true, "decisions": true, "ideas": true,
+                "coverage": true, "issues": true },
+  "summary": { "verdict": "可以进游戏了" } }
+```
+
+产物 `.modkit/preview.html` 就是上面那张截图：坐标重叠、图标缺失、文本没写，在这个阶段就能看出来。
 
 ## 为什么做这个
 
@@ -49,13 +119,13 @@ Paradox 引擎的失败方式很讨厌：它不崩溃。
 | 来源 | 篇数 | 构成 |
 |---|---|---|
 | 上游知识域 | 63 | `00_start` 到 `06_workflow`，56 正文 + 7 域索引，一字未改 |
-| 后加的知识域 | 38 | `07_tools` / `08` / `09` / `10` / `93_ecosystem`，33 正文 + 5 索引 |
+| 后加的知识域 | 39 | `07_tools` / `08` / `09` / `10` / `93_ecosystem`，34 正文 + 5 索引 |
 | 案例区 | 6 | `90_case-studies`，5 正文 + 1 索引 |
 | 错题本 | 25 | 24 条正文 + 1 索引 |
 | 方案库 | 11 | 10 条正文 + 1 索引 |
 | 根文件 | 5 | `_index`、`cheatsheet`、`README`、`ATTRIBUTION`、`AUTHORITY` |
 
-上面六块加起来是 149 篇。另有 `99_plugin-devlog/` 14 篇，记的是开发这个插件本身踩的坑，
+上面六块加起来是 149 篇（16 篇索引 + 133 篇正文）。另有 `99_plugin-devlog/` 14 篇，记的是开发这个插件本身踩的坑，
 **不属于**给 modder 用的参考库。它用 `DEVB-` / `DEVN-` 前缀，和 `EB-` / `SOL-` 不共用序列，
 检索时不会混进 mod 相关的条目里。
 
@@ -185,8 +255,8 @@ kiant_hoi4_plan action=status   → 进度、下一步、依赖是否满足
 git clone https://github.com/Kiant98/dsh-hoi4-modding.git dsh-hoi4-modding
 cd dsh-hoi4-modding
 
-# 方式三：下载 Release 附件 dsh-hoi4-modding-3.2.1.zip
-unzip dsh-hoi4-modding-3.2.1.zip -d dsh-hoi4-modding
+# 方式三：下载 Release 附件 dsh-hoi4-modding-3.2.2.zip
+unzip dsh-hoi4-modding-3.2.2.zip -d dsh-hoi4-modding
 cd dsh-hoi4-modding
 
 # 方式四：从 npm 安装（3.1.0 起）
@@ -304,7 +374,7 @@ python mcp-server/server.py --call kiant_hoi4_kb_build '{"action":"build"}'
 
 ```
 vanilla   原版游戏 6167 个文件      ← 一手事实，所有校验的参照物
-refs      参考库 148 个文件（63 篇上游 + 6 篇案例 + 5 篇根文件 + 72 篇自建）  ← 随插件走，开箱就有
+refs      参考库 163 篇（63 篇上游 + 39 后加域 + 6 案例 + 25 错题本 + 11 方案库 + 5 根 + 14 插件日志）← 随插件走，开箱就有
 notes     本机笔记
 ```
 
@@ -373,6 +443,15 @@ agent → kiant_hoi4_kb_lookup kind=focus           看原版国策树结构
 
 DSH 组合包装好后会自动注册这 15 个技能，不用手动拷贝。按需自动触发；写的是「哪里会出错」和「怎么判断」，不是教程。
 
+## 社区与贡献
+
+- **问题 / 缺陷**：[GitHub Issues](https://github.com/Kiant98/dsh-hoi4-modding/issues)
+- **用法讨论**：[GitHub Discussions](https://github.com/Kiant98/dsh-hoi4-modding/discussions) —— 做 mod 撞到的具体问题、踩坑分享、想补的知识域
+- **提交改动**：[CONTRIBUTING.md](CONTRIBUTING.md) —— 怎么加一条错题、一篇参考、一类校验器，以及自检必须过
+- **更新日志**：[CHANGELOG.md](CHANGELOG.md)
+- **市场条目**：[awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin)（category: skill）
+- **上游来源与许可**：[references/ATTRIBUTION.md](references/ATTRIBUTION.md)
+
 ## 目录
 
 每个文件、每个文件夹干什么用，见 [STRUCTURE.md](STRUCTURE.md)：一页看完，含分层图、逐文件说明、以及「想改东西时改哪」。这里只给树。
@@ -383,7 +462,9 @@ dsh-hoi4-modding/
 ├── cordis.patch.yml         DSH 组合包补丁：把本包挂成插件行
 ├── lib/index.js             DSH 入口：注册 15 个技能 + 挂载 MCP 服务器
 ├── icon.svg                 插件图标
-├── README.md                本文件
+├── README.md                本文件（中文）
+├── README.en.md             英文版，内容与中文版同步
+├── CONTRIBUTING.md          贡献指南（中英双语）
 ├── STRUCTURE.md             组织架构：每层每文件干嘛用 + 改东西时改哪
 ├── ARCHITECTURE.md          五层架构、数据流、扩展点
 ├── GETTING-STARTED.md       零经验走通第一个国策
