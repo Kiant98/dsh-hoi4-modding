@@ -1,10 +1,12 @@
 # dsh-hoi4-modding
 
+<p align="center"><img src="assets/icon-180.png" alt="dsh-hoi4-modding" width="96" height="96"></p>
+
 钢铁雄心4 的模组开发工具包。一个模组工程师 agent、15 个技能、20 个 MCP 工具，外加一套拿原版游戏当参照物的知识库。
 
 面向 HOI4 1.19.x（Operation Postern）。纯 Python 标准库，零依赖。
 
-> 当前版本 **3.2.0**（2026-11-09）。GitHub：[Kiant98/dsh-hoi4-modding](https://github.com/Kiant98/dsh-hoi4-modding) ｜ npm：[dsh-hoi4-modding](https://www.npmjs.com/package/dsh-hoi4-modding)
+> 当前版本 **3.2.1**（2026-11-12）。GitHub：[Kiant98/dsh-hoi4-modding](https://github.com/Kiant98/dsh-hoi4-modding) ｜ npm：[dsh-hoi4-modding](https://www.npmjs.com/package/dsh-hoi4-modding)
 
 ## 为什么做这个
 
@@ -172,7 +174,7 @@ kiant_hoi4_plan action=status   → 进度、下一步、依赖是否满足
 
 **方式一：在 DeepSeek Harness 里装（推荐；3.2.0 起）**
 
-设置 → 插件 → 搜索 `dsh-hoi4-modding` → 安装（已装过就点更新到 3.2.0），然后重开会话。装好后：
+设置 → 插件 → 搜索 `dsh-hoi4-modding` → 安装（已装过就点更新到最新版），然后重开会话。装好后：
 
 - 15 个技能自动出现在技能列表，按需触发，不用手动拷贝 `SKILL.md`；
 - 20 个工具自动挂载为 `mcp__kiant_hoi4_modkit__kiant_hoi4_*`，由包内 `lib/index.js` 用本机 `python` 起 `mcp-server/server.py`（stdio）；
@@ -183,8 +185,8 @@ kiant_hoi4_plan action=status   → 进度、下一步、依赖是否满足
 git clone https://github.com/Kiant98/dsh-hoi4-modding.git dsh-hoi4-modding
 cd dsh-hoi4-modding
 
-# 方式三：下载 Release 附件 dsh-hoi4-modding-3.2.0.zip
-unzip dsh-hoi4-modding-3.2.0.zip -d dsh-hoi4-modding
+# 方式三：下载 Release 附件 dsh-hoi4-modding-3.2.1.zip
+unzip dsh-hoi4-modding-3.2.1.zip -d dsh-hoi4-modding
 cd dsh-hoi4-modding
 
 # 方式四：从 npm 安装（3.1.0 起）

@@ -1,6 +1,6 @@
 {
   "name": "dsh-hoi4-modding",
-  "version": "3.2.0",
+  "version": "3.2.1",
   "description": "HOI4（钢铁雄心4）模组开发工具包（DSH 组合包）：1 个模组工程师 agent、15 个技能、20 个 MCP 工具，配 163 篇参考库与以原版 1.19.4.2 为参照的知识库。装进 DeepSeek Harness 后自动注册 15 个技能并在本地挂载 20 个工具；纯 Python 标准库零依赖，面向 1.19.x。",
   "type": "module",
   "main": "lib/index.js",
@@ -42,6 +42,7 @@
     "url": "https://github.com/Kiant98/dsh-hoi4-modding/issues"
   },
   "files": [
+    "assets/",
     "agents/",
     "examples/",
     "knowledge/",
@@ -68,5 +69,13 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-mcp-client": ">=0.0.1-rc.1 <0.1.0 || >=0.1.0-rc.1 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-mcp-client": {
+      "optional": true
+    }
   }
 }

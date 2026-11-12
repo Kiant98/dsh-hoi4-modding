@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#12202e"/>
+  <circle cx="256" cy="236" r="180" fill="none" stroke="#5b8db8" stroke-width="8" opacity="0.30"/>
+  <circle cx="256" cy="236" r="148" fill="none" stroke="#5b8db8" stroke-width="8" opacity="0.55"/>
+  <path d="M172 108h120l52 52v132a14 14 0 0 1-14 14H172a14 14 0 0 1-14-14V122a14 14 0 0 1 14-14z" fill="#e8eef4"/>
+  <path d="M292 108v38a14 14 0 0 0 14 14h38z" fill="#b9cadb"/>
+  <g fill="#12202e">
+    <rect x="190" y="196" width="116" height="15" rx="7"/>
+    <rect x="190" y="228" width="116" height="15" rx="7"/>
+    <rect x="190" y="260" width="78" height="15" rx="7"/>
+  </g>
+  <text x="256" y="452" font-family="Segoe UI, Arial, sans-serif" font-size="70" font-weight="700"
+        fill="#e8eef4" text-anchor="middle" letter-spacing="4">HOI4</text>
+</svg>

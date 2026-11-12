@@ -1,5 +1,13 @@
 # 更新日志
 
+## 3.2.1（2026-11-12）
+
+DSH 插件市场（awesome-dsh-plugin）收录适配。只动元数据与文档，未触及脚本。
+
+- **依赖声明**：`package.json` 把宿主提供的 `@deepseek-ai/dsh-mcp-client` 声明为**可选** peer（范围覆盖 0.0.x / 0.1.x / 0.2.x 的预发布分支），符合 DSH 插件生态的依赖约定；宿主未提供时仍按原逻辑回退到 `app.asar` 内置实现，不影响安装。
+- **图标**：新增 `assets/`（`icon.svg` 源 + 512 / 180 / 96 PNG 位图），供插件市场卡片与 README 使用；`files` 字段把 `assets/` 打进 npm 包。
+- **文档**：README 顶部加图标、版本行与 Release 附件名同步到 3.2.1；`plugin.json` 版本同步。
+
 ## 3.2.0（2026-11-09）
 
 DeepSeek Harness 组合包版本。修 3.1.0 在 DSH 插件页报 `{"code":"not-bundle"}` 装不上的问题。
