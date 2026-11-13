@@ -14,7 +14,7 @@
 
 面向 HOI4 1.19.x（Operation Postern）。纯 Python 标准库，零依赖。
 
-> 当前版本 **3.3.0**（2026-11-13）。GitHub：[Kiant98/dsh-hoi4-modding](https://github.com/Kiant98/dsh-hoi4-modding) ｜ npm：[dsh-hoi4-modding](https://www.npmjs.com/package/dsh-hoi4-modding)
+> 当前版本 **3.4.0**（2026-11-13）。GitHub：[Kiant98/dsh-hoi4-modding](https://github.com/Kiant98/dsh-hoi4-modding) ｜ npm：[dsh-hoi4-modding](https://www.npmjs.com/package/dsh-hoi4-modding)
 
 ## 能做什么：三段真实输出
 
@@ -223,11 +223,19 @@ kiant_hoi4_validate_mod deep=true
 kiant_hoi4_preview
 ```
 
-生成一个自包含 HTML：国策树按真实 x/y 坐标渲染并画出前置连线，事件/决议/精神卡片带已解析文本，本地化覆盖率与问题清单一并呈现。
+生成一个自包含 HTML：国策树按真实 x/y 坐标渲染并画出前置连线；事件不是简化卡片，而是按 `interface/eventwindow.gui` 的真实几何拼出来的——纸纹窗框、夹纸板、标题字体、左下图位、右列选项按钮的位置与尺寸都和游戏里一致（读不到 `.gui` 时退回内置的原版数值）。决议/精神卡片带已解析文本，本地化覆盖率与问题清单一并呈现。
 
 本机装了游戏的话再往前一步：按 sprite 名去原版的 `.gfx` 里查真实贴图，解码 DDS 后直接内联进 HTML。国策图标接错、事件图没挂上、精神用错系列，不用进游戏就能看见。图标读的是你自己的游戏目录，不随插件分发；传 `icons=false` 可关。
 
-零外部依赖，纯 HTML，双击就开。不带图标约 13 KB，带图标约 100 KB（图片占大头）。坐标重叠、图标挂错、文本没写，在这个阶段就能看出来。
+零外部依赖，纯 HTML，双击就开。不带图标约 14 KB，带图标与事件窗约 570 KB（窗框按原尺寸内联，图片占大头）。坐标重叠、图标挂错、文本没写，在这个阶段就能看出来。
+
+想改一存盘就看到结果，用 watch 脚本：
+
+```bash
+python tools/kiant-hoi4-watch.py path/to/your_mod --game --open
+```
+
+它起一个只监听 `127.0.0.1` 的小服务并打开浏览器：页面里的 `/state` 只比对文件签名（快），`/render` 才算真渲染，所以存盘后 1 秒内自动刷新，没改动时几乎不耗 CPU。`--once` 是不起服务的单次输出（写到 `<mod>/.modkit/preview.html`），`--no-icons` 关贴图，`--interval` 调轮询间隔，`--port` 换端口。
 
 ### 5. 规划：不让长任务跑偏
 
@@ -257,8 +265,8 @@ kiant_hoi4_plan action=status   → 进度、下一步、依赖是否满足
 git clone https://github.com/Kiant98/dsh-hoi4-modding.git dsh-hoi4-modding
 cd dsh-hoi4-modding
 
-# 方式三：下载 Release 附件 dsh-hoi4-modding-3.3.0.zip
-unzip dsh-hoi4-modding-3.3.0.zip -d dsh-hoi4-modding
+# 方式三：下载 Release 附件 dsh-hoi4-modding-3.4.0.zip
+unzip dsh-hoi4-modding-3.4.0.zip -d dsh-hoi4-modding
 cd dsh-hoi4-modding
 
 # 方式四：从 npm 安装（3.1.0 起）
@@ -394,7 +402,7 @@ notes     本机笔记
 改过核心模块就跑一遍，比手点工具可靠：
 
 ```bash
-python mcp-server/selftest.py                 # 335 项断言，十七组：解析/校验/规划/预览/脚手架/知识库/协议/远端/两级/错题本/状态/文档一致性/独立工具/本地化真实写法/条件块/原版宽容度
+python mcp-server/selftest.py                 # 368 项断言，十七组：解析/校验/规划/预览/脚手架/知识库/协议/远端/两级/错题本/状态/文档一致性/独立工具/本地化真实写法/条件块/原版宽容度
 python mcp-server/bench.py <模组路径>          # 在真实模组上量耗时，顺便看假阳性
 ```
 
@@ -474,19 +482,20 @@ dsh-hoi4-modding/
 ├── PUBLISHING-LIBRARY.md    作者侧：本地与资料库怎么保持一致（本地优先/格式一致/旧版归档）
 ├── agents/kiant-hoi4-modder.md    全生命周期 agent 定义
 ├── skills/                  15 个技能，各一个文件夹
-├── mcp-server/              零依赖 Python，13 个模块
+├── mcp-server/              零依赖 Python，14 个模块
 │   ├── server.py            20 个工具 + MCP 协议
 │   ├── checks.py            结构校验
 │   ├── kb.py                知识库索引与两级检索
 │   ├── cw.py                Clausewitz 解析器（地基）
 │   ├── validators.py        10 个可插拔类型校验器
 │   ├── playbook.py          错题本与方案库检索
-│   ├── preview.py           离线预览渲染
+│   ├── preview.py           离线预览渲染（国策树/事件窗/卡片）
+│   ├── gui.py               只读 .gui：抽控件几何给事件窗摆位
 │   ├── assets.py            贴图管线：DDS/TGA → 内联 PNG
 │   ├── scaffolder.py        12 类骨架生成
 │   ├── remote.py            远端知识库同步
 │   ├── planner.py           分阶段规划
-│   ├── selftest.py          335 项自检
+│   ├── selftest.py          368 项自检
 │   └── bench.py             真实模组压力测试
 ├── references/              163 篇，16 个目录（上游 MIT + 自撰 + 自建）
 │   ├── _index.md            总路由：「我要做 X → 读哪一篇」
@@ -562,7 +571,7 @@ effect/trigger 名能查但不自动报。名字表从游戏 `documentation/` �
 | `examples/broken_mod` | 12 文件 | — | 0.1 s | 18 处注入缺陷，14 处断言全命中 |
 | 原版 vanilla 1.19.4.2 | 6167 文件 / 26 万词条 / 50 篇官方文档 | 16 s | — | 553 effect + 596 trigger 可查 |
 
-335 项自检全绿，覆盖解析器、示例模组、错误夹具（12 处缺陷断言全命中）、规划器、预览（含国策坐标解算）、脚手架、知识库、MCP 协议握手、远端同步、两级资料库、错题本与方案库检索、平台状态提示、组织架构文档与实际一致、独立工具（DDS 头部与块数取整、lint 三类错误与误报边界）、条件块采集、原版真实写法的宽容度。
+368 项自检全绿，覆盖解析器、示例模组、错误夹具（12 处缺陷断言全命中）、规划器、预览（含国策坐标解算）、脚手架、知识库、MCP 协议握手、远端同步、两级资料库、错题本与方案库检索、平台状态提示、组织架构文档与实际一致、独立工具（DDS 头部与块数取整、lint 三类错误与误报边界）、条件块采集、原版真实写法的宽容度。
 
 ## 校验器可信到什么程度
 

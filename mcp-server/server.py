@@ -467,7 +467,9 @@ def tool_preview(args: dict) -> Any:
             if found and os.path.isdir(os.path.join(found, "gfx")):
                 game_root = found
         try:
-            lib = assets.open_library(mod_root, game_root)
+            # 上限抬到 1024：事件窗顶栏是 581×121 的整张 UI，按 128 压会糊；
+            # 图标仍然在编码时缩到 56×49，互不影响。
+            lib = assets.open_library(mod_root, game_root, limit_px=1024)
         except Exception:
             lib = None
 
@@ -875,9 +877,10 @@ TOOLS: dict[str, tuple[Callable[[dict], Any], dict]] = {
         {
             "description": (
                 "生成自包含 HTML 预览，不用开游戏：国策树按真实 x/y 坐标渲染并画前置连线，"
-                "事件/决议/精神卡片带已解析文本，本地化覆盖率与问题清单一并呈现。"
-                "本机有游戏目录时连同 DDS 图标和事件图一起内联（icons=false 可关），"
-                "改完内容看一眼就能判断结构对不对、观感像不像。"
+                "事件按 interface/eventwindow.gui 的真实几何拼出整窗（纸纹框、标题、图位、"
+                "右列选项按钮），决议/精神卡片带已解析文本，本地化覆盖率与问题清单一并呈现。"
+                "本机有游戏目录时连同 DDS 图标和窗框底图一起内联（icons=false 可关），"
+                "改完内容看一眼就能判断结构对不对、图标接错没、观感像不像。"
             ),
             "inputSchema": {
                 "type": "object",

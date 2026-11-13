@@ -16,6 +16,8 @@ import os
 import time
 from typing import Any
 
+import gui
+
 COL_W = 208
 ROW_H = 116
 NODE_W = 176
@@ -24,9 +26,12 @@ PAD = 48
 
 # 贴图在卡片里的展示尺寸。icon 走 CSS background-image，尺寸由元素类控制。
 ICON_SIZE = {"focus": (56, 49), "decision": (36, 36), "idea": (36, 36)}
-EVENT_COVER = (340, 150)
-IMAGE_BUDGET = 700_000   # data URI 累计字符数上限（约 700KB 的 base64）
-EVENT_COVER_QUOTA = 10   # 事件大图最贵，单独限张数
+EVENT_COVER = (209, 176)   # 事件窗底栏图位（原版 gui 里的 event_picture）
+IMAGE_BUDGET = 1_200_000  # data URI 累计字符数上限（约 1.2MB 的 base64）
+EVENT_COVER_QUOTA = 10    # 事件大图最贵，单独限张数
+# 事件窗底图是整张 UI（顶栏 581×121、底栏 581×206），不可能压到图标那么大。
+# 它们按原尺寸内联、所有事件共用一套，所以单独给个上限，免得把图标挤掉。
+UI_BUDGET = 900_000
 
 SEV_COLOR = {"error": "#c0392b", "warn": "#b8860b", "info": "#2c6fa8"}
 
@@ -48,8 +53,14 @@ def _loc(loc: dict, key: str, fallback: str = "") -> str:
     return fallback or key
 
 
-def _sprite_names(item: dict, first: str = "") -> list[str]:
-    """一个定义引用贴图的所有候选名字：标量字段在前，pictures 里的一串在后。"""
+def _sprite_names(item: dict, first: str = "", prefixes: tuple = ()) -> list[str]:
+    """一个定义引用贴图的所有候选名字：标量字段在前，pictures 里的一串在后。
+
+    HOI4 的写法分两种：国策/事件直接写 sprite 名（GFX_focus_x），理念和决议
+    却只写裸名（picture = generic_navy_bonus / icon = generic_tank），由游戏
+    自己套上 GFX_idea_ / GFX_decision_ 前缀。照着字段原样找会 280 个图标全
+    空——预览要判断「图标接错没」，就得跟游戏一样先补前缀。
+    """
     names: list[str] = []
     head = item.get(first) if first else None
     if head:
@@ -57,7 +68,18 @@ def _sprite_names(item: dict, first: str = "") -> list[str]:
     for name in item.get("pictures") or []:
         if name and str(name) not in names:
             names.append(str(name))
-    return names
+    if not prefixes:
+        return names
+    out: list[str] = []
+    for name in names:
+        if not name.startswith("GFX_"):
+            for prefix in prefixes:
+                cand = "GFX_%s_%s" % (prefix, name)
+                if cand not in out:
+                    out.append(cand)
+        if name not in out:
+            out.append(name)
+    return out
 
 
 # --------------------------------------------------------------------------- #
@@ -108,6 +130,46 @@ class _Sprites:
                 continue
             cls = "sp" + hashlib.md5(
                 ("%s|%d|%d|%d" % (name, w, h, int(cover))).encode("utf-8")
+            ).hexdigest()[:10]
+            self.seen[key] = cls
+            self.rules.append('.%s{background-image:url("%s")}' % (cls, uri))
+            self.used += len(uri)
+            self.hits += 1
+            return cls
+        self.misses += 1
+        return ""
+
+    def native(self, names: list[str], w: int, h: int, max_px: int = 0) -> str:
+        """UI 底图：按原尺寸内联。
+
+        图标那条路会把图先压到 128px 再缩到展示框——对 56px 的国策图标没问题，
+        对 581 宽的窗框就是灾难。这里不走 data_uri，直接要原始分辨率。
+        """
+        if not self.enabled:
+            return ""
+        for name in names:
+            if not name or name in {"-", "none", "null"}:
+                continue
+            key = ("ui", name, w, h, max_px)
+            if key in self.seen:
+                return self.seen[key]
+            if self.used >= self.budget:
+                self.skipped += 1
+                return ""
+            uri = ""
+            try:
+                fn = getattr(self.assets, "sprite_uri", None)
+                if callable(fn):
+                    _cw, _ch, uri = fn(name, max_px)
+                else:
+                    # 测试里的假素材库只有 data_uri，退回按展示框取图。
+                    uri = self.assets.data_uri(name, w, h)
+            except Exception:
+                uri = ""
+            if not uri:
+                continue
+            cls = "sp" + hashlib.md5(
+                ("%s|ui|%d|%d" % (name, w, h)).encode("utf-8")
             ).hexdigest()[:10]
             self.seen[key] = cls
             self.rules.append('.%s{background-image:url("%s")}' % (cls, uri))
@@ -255,10 +317,63 @@ def _render_focus(focuses: list[dict], loc: dict, sprites: _Sprites) -> str:
 # Cards
 # --------------------------------------------------------------------------- #
 
-def _render_events(events: list[dict], loc: dict, sprites: _Sprites) -> str:
+def _event_css(geo: dict) -> str:
+    """把 .gui 读到的几何写成一条条 CSS，所有事件窗共用。"""
+    w = geo["width"]
+    top = geo["top"]["height"]
+    mid = geo["mid"]["height"]
+    bot = geo["bottom"]["height"]
+    ti, de = geo["title"], geo["desc"]
+    pi, cl, op = geo["picture"], geo["clip"], geo["options"]
+    slot_w, slot_h = op["slot"]
+    tile_h = (geo["mid"].get("tile") or (w, 66))[1]
+    return (
+        f".ewin{{width:{w}px}}"
+        f".ewtop{{height:{top}px;background-size:{w}px {top}px}}"
+        f".ewtitle{{left:{ti['x']}px;top:{ti['y']}px;width:{ti['w']}px;"
+        f"height:{ti['h']}px;line-height:{ti['h']}px;"
+        f"text-align:{_ALIGN.get(ti.get('align', ''), 'center')}}}"
+        # 中段是可伸缩的：描述长了往下长，纸张纹理跟着平铺。
+        f".ewmid{{min-height:{mid}px;padding:{de['y'] + 8}px "
+        f"{w - de['x'] - de['w']}px 14px {de['x']}px;"
+        f"background-size:{w}px {tile_h}px}}"
+        f".ewbot{{height:{bot}px;background-size:{w}px {bot}px}}"
+        f".ewpic{{left:{pi['x']}px;top:{pi['y']}px;width:{pi['w']}px;"
+        f"height:{pi['h']}px}}"
+        f".ewclip{{left:{cl['x']}px;top:{cl['y']}px}}"
+        f".ewopts{{left:{op['x']}px;top:{op['y']}px;width:{op['w']}px}}"
+        f".ewopt{{width:{slot_w}px;height:{slot_h}px}}"
+    )
+
+
+_ALIGN = {"centre": "center", "center": "center", "left": "left",
+          "right": "right", "justified": "justify"}
+
+
+def _render_events(events: list[dict], loc: dict, sprites: _Sprites,
+                   geo: dict | None = None) -> str:
+    """按游戏的事件窗版式渲染：顶栏 + 中段描述 + 底栏（图片 / 选项）。
+
+    这不是「凑得像」：几何来自 interface/eventwindow.gui，贴图是原版的
+    DDS，摆位和游戏里一致——所以图标接错、描述溢出、选项挤成一团，一眼
+    就能看出来。
+    """
     if not events:
         return '<p class="empty">没有事件。</p>'
-    out = ['<div class="cards">']
+    geo = geo or gui.event_layout()
+    w = geo["width"]
+    top_h = geo["top"]["height"]
+    bot_h = geo["bottom"]["height"]
+    mid_tile = (geo["mid"].get("tile") or (w, 66))[1]
+    slot_w, slot_h = geo["options"]["slot"]
+
+    top_cls = sprites.native([geo["top"]["bg"]], w, top_h)
+    mid_cls = sprites.native([geo["mid"]["bg"]], w, mid_tile)
+    bot_cls = sprites.native([geo["bottom"]["bg"]], w, bot_h)
+    opt_cls = sprites.native([geo["options"]["bg"]], slot_w, slot_h)
+    clip_cls = sprites.native([geo["clip"]["sprite"]], 55, 30)
+
+    cards: list[str] = []
     for ev in events:
         eid = ev.get("id", "")
         title = _loc(loc, ev.get("title") or f"{eid}.t", eid)
@@ -266,22 +381,35 @@ def _render_events(events: list[dict], loc: dict, sprites: _Sprites) -> str:
         opts = ev.get("options") or []
         if opts:
             opt_html = "".join(
-                f'<span class="btn">{_esc(_loc(loc, o, o))}</span>' for o in opts
+                f'<div class="ewopt {opt_cls}">{_esc(_loc(loc, o, o))}</div>'
+                for o in opts
             )
         else:
-            opt_html = '<span class="btn dim">无显式选项（回退到 id.a/id.b）</span>'
-        cover = sprites.cover(_sprite_names(ev, "extra"))
-        out.append(
-            '<article class="ev">'
-            f'<div class="evimg {cover}"><span class="eid">{_esc(eid)}</span></div>'
-            f'<div class="evbody"><div class="evtitle">{_esc(title)}</div>'
-            f'<div class="evdesc">{_esc(desc[:400])}</div>'
-            f'<div class="evopts">{opt_html}</div>'
-            f'<div class="dfoot">{_esc(ev.get("file", ""))}:{_esc(ev.get("line", ""))}</div>'
-            "</div></article>"
+            opt_html = ('<div class="ewopt dimopt">无显式选项'
+                        '（回退到 id.a / id.b）</div>')
+        pic_cls = sprites.cover(_sprite_names(ev, "extra"))
+        pic_html = (f'<div class="ewpic {pic_cls}"></div>' if pic_cls
+                    else '<div class="ewpic nop"><span>无配图</span></div>')
+        cards.append(
+            '<figure class="ewcard">'
+            '<article class="ewin">'
+            f'<div class="ewtop {top_cls}">'
+            f'<div class="ewtitle">{_esc(title)}</div>'
+            "</div>"
+            f'<div class="ewmid {mid_cls}">'
+            f'<div class="ewdesc">{_esc(desc[:420])}</div>'
+            "</div>"
+            f'<div class="ewbot {bot_cls}">'
+            + pic_html
+            + (f'<div class="ewclip {clip_cls}"></div>' if clip_cls else "")
+            + f'<div class="ewopts">{opt_html}</div>'
+            "</div>"
+            "</article>"
+            f'<figcaption class="ewfoot">{_esc(eid)} · '
+            f'{_esc(ev.get("file", ""))}:{_esc(ev.get("line", ""))}</figcaption>'
+            "</figure>"
         )
-    out.append("</div>")
-    return "".join(out)
+    return '<div class="evcards">' + "".join(cards) + "</div>"
 
 
 def _render_decisions(decisions: list[dict], categories: list[dict], loc: dict,
@@ -300,7 +428,7 @@ def _render_decisions(decisions: list[dict], categories: list[dict], loc: dict,
         )
         for dec in items:
             did = dec.get("id", "")
-            icon = sprites.icon(_sprite_names(dec, "extra"), ICON_SIZE["decision"])
+            icon = sprites.icon(_sprite_names(dec, "extra", ("decision",)), ICON_SIZE["decision"])
             out.append(
                 '<article class="dec">'
                 f'<div class="dico {icon}"></div>'
@@ -320,7 +448,7 @@ def _render_ideas(ideas: list[dict], loc: dict, sprites: _Sprites) -> str:
     out = ['<div class="ideas">']
     for idea in ideas:
         iid = idea.get("id", "")
-        icon = sprites.icon(_sprite_names(idea, "extra"), ICON_SIZE["idea"])
+        icon = sprites.icon(_sprite_names(idea, "extra", ("idea",)), ICON_SIZE["idea"])
         slot = idea.get("slot", "")
         out.append(
             '<div class="idea">'
@@ -429,19 +557,30 @@ h2{font-size:15px;margin:30px 0 14px;padding:0 0 8px;border-bottom:1px solid var
 h2::before{content:"";display:inline-block;width:3px;height:13px;background:var(--edge2);
            margin-right:9px;vertical-align:-1px}
 .cards{display:flex;flex-wrap:wrap;gap:14px}
-.ev{width:340px;background:linear-gradient(180deg,#262019,#181413);
-    border:1px solid var(--edge2);border-radius:3px;overflow:hidden;
-    box-shadow:0 2px 10px rgba(0,0,0,.35)}
-.evimg{height:150px;background-color:#0b0a09;background-size:cover;background-position:center;
-       position:relative;border-bottom:1px solid var(--edge)}
-.evimg::after{content:"";position:absolute;inset:0;
-              background:linear-gradient(180deg,rgba(0,0,0,.30),transparent 40%,rgba(0,0,0,.35))}
-.evimg .eid{position:absolute;left:7px;top:6px;z-index:2;font:10px ui-monospace,monospace;
-            color:#f2e8d2;background:rgba(0,0,0,.62);padding:1px 6px;border-radius:2px}
-.evbody{padding:12px 14px 14px}
-.evtitle{font-size:15px;color:var(--gold2);margin-bottom:6px;line-height:1.35}
-.evdesc{font-size:13px;color:var(--txt);max-height:5.4em;overflow:hidden}
-.evopts{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+/* 事件窗：顶栏 + 中段 + 底栏三块拼起来，几何与贴图都来自游戏本体。 */
+.evcards{display:flex;flex-wrap:wrap;gap:26px;align-items:flex-start}
+.ewcard{margin:0}
+.ewin{position:relative;background:#17130f;border-radius:2px;overflow:hidden;
+      box-shadow:0 8px 26px rgba(0,0,0,.55)}
+.ewtop,.ewmid,.ewbot{position:relative;background-repeat:no-repeat;
+                     background-position:left top;background-color:#d3c4a6}
+.ewmid{background-repeat:repeat-y}
+.ewtitle{position:absolute;color:#2c2114;font:600 21px/1 Georgia,"Times New Roman",serif;
+         letter-spacing:.4px;text-shadow:0 1px 0 rgba(255,255,255,.28);overflow:hidden;
+         white-space:nowrap;text-overflow:ellipsis}
+.ewdesc{font:15px/1.5 Georgia,"Times New Roman",serif;color:#3a2c1a;
+        max-height:236px;overflow:hidden}
+.ewpic{position:absolute;background-size:cover;background-position:center;background-color:#1a1510}
+.ewpic.nop{display:flex;align-items:center;justify-content:center;background-color:rgba(0,0,0,.05);
+           border:1px dashed rgba(70,50,25,.35);color:rgba(70,50,25,.42);font-size:11px}
+.ewclip{position:absolute;width:55px;height:30px;pointer-events:none}
+.ewopts{position:absolute}
+.ewopt{display:flex;align-items:center;justify-content:flex-start;padding:0 18px;overflow:hidden;
+      background:linear-gradient(180deg,#6d4a1e,#4a3110);background-size:100% 100%;
+      background-repeat:no-repeat;color:#e8d9ba;font:14px/1.2 Georgia,serif;
+      text-shadow:0 1px 1px rgba(0,0,0,.65)}
+.ewopt.dimopt{background:rgba(60,40,20,.10);color:#cbaf87;font:italic 12px Georgia,serif}
+.ewfoot{font:10px ui-monospace,monospace;color:var(--dim);margin-top:7px}
 .btn{font-size:12px;padding:5px 12px;background:linear-gradient(180deg,#7d4a16,#5a330c);
      border:1px solid #a06a24;border-radius:2px;color:#f3e2bd}
 .dec{display:flex;gap:12px;width:330px;padding:12px;background:linear-gradient(180deg,#221e1a,#181413);
@@ -519,10 +658,13 @@ def render(
     """assets 传 None 时全程不出图（离线、体积稳定），selftest 依赖这一点。"""
     started = time.time()
     sprites = _Sprites(assets, budget=image_budget)
+    # 事件窗几何优先取 mod 自己覆盖的 interface/eventwindow.gui，其次原版；
+    # 都没有就退回内置的原版数值——版式照样对，只是没有窗框贴图。
+    geo = gui.event_layout(gui.windows_for(mod_root, game_root))
 
     sections = {
         "focus": _render_focus(definitions.get("focus", []), loc, sprites),
-        "events": _render_events(definitions.get("event", []), loc, sprites),
+        "events": _render_events(definitions.get("event", []), loc, sprites, geo),
         "decisions": _render_decisions(
             definitions.get("decision", []),
             definitions.get("decision_category", []),
@@ -560,7 +702,8 @@ def render(
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{_esc(name)} · 离线预览</title>
 <style>{CSS_BASE}
-{sprites.css()}</style></head><body>
+{sprites.css()}
+{_event_css(geo)}</style></head><body>
 <header class="top">
   <h1>{_esc(name)}</h1>
   <div class="meta">
@@ -623,5 +766,6 @@ def render(
             "missing": sprites.misses,
             "bytes": sprites.used,
         },
+        "gui": {"source": geo["source"], "window": f'{geo["width"]}x{geo["height_total"]}'},
         "note": "双击打开即可，无需游戏与网络。",
     }

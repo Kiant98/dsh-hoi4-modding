@@ -475,6 +475,7 @@ class AssetLibrary:
         self._built = False
         self._images: dict[str, tuple[int, int, bytes] | None] = {}
         self._uris: dict[tuple[str, int, int], str] = {}
+        self._raw: dict[tuple[str, int], tuple[int, int, str]] = {}
         self.stats = {"sprite_files": 0, "sprites": 0, "decoded": 0, "failed": 0}
 
     def build(self) -> "AssetLibrary":
@@ -605,8 +606,41 @@ class AssetLibrary:
         self._uris[key] = uri
         return uri
 
+    def sprite_uri(self, name: str, max_px: int = 0) -> tuple[int, int, str]:
+        """原始分辨率内联一张图，返回 (宽, 高, data URI)。
 
-def open_library(mod_root: str, game_root: str = "") -> AssetLibrary:
-    """按「mod → 原版」顺序建库。game_root 为空时只扫 mod 自己的素材。"""
+        data_uri 是给图标用的：先按 limit_px 压到 128 以内再缩到展示框。
+        但 UI 底图不能这么干——事件窗顶栏是 581×121，压到 128 宽再放大会糊成
+        一片；九宫格切图更会被压得边框全无。UI 需要的是原尺寸，这个入口不设
+        128 上限，只在调用方显式给了 max_px 时才缩。
+        """
+        name = (name or "").strip()
+        if not name:
+            return (0, 0, "")
+        key = (name, max_px)
+        if key in self._raw:
+            return self._raw[key]
+        img = self.image(name)
+        if not img:
+            self._raw[key] = (0, 0, "")
+            return self._raw[key]
+        w, h, rgba = img
+        if max_px and max(w, h) > max_px:
+            scale = max_px / max(w, h)
+            w2, h2 = max(1, int(w * scale)), max(1, int(h * scale))
+            rgba = resize_rgba(rgba, w, h, w2, h2)
+            w, h = w2, h2
+        png = encode_png(w, h, rgba)
+        uri = "data:image/png;base64," + base64.b64encode(png).decode("ascii")
+        self._raw[key] = (w, h, uri)
+        return self._raw[key]
+
+
+def open_library(mod_root: str, game_root: str = "", limit_px: int = 128) -> AssetLibrary:
+    """按「mod → 原版」顺序建库。game_root 为空时只扫 mod 自己的素材。
+
+    limit_px 是图标解码的上限：预览里图标最大 56px，压到 128 既够用又省内存。
+    要内联 UI 底图（事件窗顶栏 581 宽）就得把这个上限抬上去，不然糊。
+    """
     roots = [r for r in (mod_root, game_root) if r]
-    return AssetLibrary(roots).build()
+    return AssetLibrary(roots, limit_px=limit_px).build()

@@ -26,6 +26,7 @@ sys.path.insert(0, HERE)
 
 import checks  # noqa: E402
 import cw  # noqa: E402
+import gui  # noqa: E402
 import kb  # noqa: E402
 import planner  # noqa: E402
 import playbook  # noqa: E402
@@ -515,6 +516,13 @@ def test_preview() -> None:
            icon_html.count("background-image:url(") == r2["assets"]["images"], str(r2["assets"]))
         ok("引用不到的贴图留占位不出图", r2["assets"]["missing"] > 0, str(r2["assets"]))
 
+        # 原版和工坊 mod 里理念写 picture = generic_navy_bonus、决议写
+        # icon = generic_tank，游戏自己补 GFX_idea_ / GFX_decision_ 前缀。
+        # 预览照着字段原样找会让整页图标全空，所以候选名必须先补前缀。
+        bare = preview._sprite_names({"extra": "generic_navy_bonus"}, "extra", ("idea",))
+        ok("理念/决议的裸名按游戏前缀解析",
+           bare and bare[0] == "GFX_idea_generic_navy_bonus", str(bare[:2]))
+
         sp = preview._Sprites(_FakeAssets({"GFX_shared"}))
         a = sp.icon(["GFX_shared"], (56, 49))
         b = sp.icon(["GFX_shared"], (56, 49))
@@ -522,8 +530,127 @@ def test_preview() -> None:
 
         sp0 = preview._Sprites(_FakeAssets({"GFX_shared"}), budget=0)
         ok("预算为 0 时一张图也不出", sp0.icon(["GFX_shared"], (56, 49)) == "")
+
+        # 事件窗。卡片式版式（图在上、文在下）自创得再好看，也看不出
+        # 「选项挤在一起」「图裁错位」——只有按 .gui 的三段几何拼，预览
+        # 才等于游戏里那一屏。这几条盯的是几何真的落了地。
+        ok("事件按游戏事件窗渲染（顶栏/中段/底栏三块）",
+           '<article class="ewin">' in html and ".ewtop" in html
+           and ".ewmid" in html and ".ewbot" in html, str(len(html)))
+        ok("三段高度写进了 CSS（121 / 206）",
+           ".ewtop{height:121px" in html and ".ewbot{height:206px" in html, "缺高度")
+        ok("选项格子按 slotsize 排（300×47）",
+           ".ewopt{width:300px;height:47px}" in html, "slotsize 没生效")
+        ok("结果里报告了几何来源", r2.get("gui", {}).get("window") == "581x427", str(r2.get("gui")))
+        ok("贴图取不到时事件窗仍然出完整版面",
+           'class="ewtop "' in icon_html, str(len(icon_html)))
+        ok("缺图计数把窗框底图也算进去（≥4）",
+           r2["assets"]["missing"] >= 4, str(r2["assets"]))
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+
+
+
+# --------------------------------------------------------------------------- #
+# 5b. .gui 几何
+# --------------------------------------------------------------------------- #
+
+# 一份缩小版的 interface/eventwindow.gui：结构与原版一致，数字故意全换掉，
+# 这样「读到了」和「写死了」能区分开——照抄默认值也能过就失去意义了。
+EVENT_GUI_TEXT = """guiTypes = {
+	containerWindowType = {
+		name = "EventWindow"
+		size = { width = 640 height = 460 }
+		containerWindowType = {
+			name = "top_Window"
+			size = { height = 130 }
+			background = { spriteType = "GFX_top" }
+			instantTextBoxType = {
+				name = "Title"
+				position = { x = 20 y = 74 }
+				maxSize = { width = 560 height = 34 }
+				font = "hoi4_typewriter22"
+				format = "centre"
+			}
+		}
+		containerWindowType = {
+			name = "midsection"
+			size = { height = 110 }
+			instantTextBoxType = {
+				name = "Description"
+				position = { x = 35 y = 4 }
+				font = "hoi4_typewriter16"
+			}
+		}
+		containerWindowType = {
+			name = "bottom_Window"
+			size = { height = 220 }
+			iconType = { name = "event_picture" position = { x = 9 y = 9 } }
+			iconType = {
+				name = "event_pic_clip"
+				position = { x = -1 y = 39 }
+				spriteType = "GFX_clip"
+			}
+			gridBoxType = {
+				name = "options_grid"
+				position = { x = 220 y = 2 }
+				slotsize = { width = 310 height = 52 }
+				max_slots_horizontal = 1
+			}
+		}
+	}
+	containerWindowType = {
+		name = "event_option_entry"
+		size = { width = 320 height = 52 }
+		background = { spriteType = "GFX_opt" }
+	}
+}
+"""
+
+
+def test_gui() -> None:
+    section("5b. .gui 几何")
+    windows = gui.parse(EVENT_GUI_TEXT)
+    ok("解析出事件窗与选项按钮两个窗口",
+       sorted(windows) == ["event_option_entry", "eventwindow"], str(sorted(windows)))
+    win = windows.get("eventwindow") or {}
+    ok("窗口尺寸解析正确", win.get("size") == (640, 460), str(win.get("size")))
+    ok("子控件按名字查到（大小写不敏感）", gui.child(win, "top_window") is not None)
+    ok("多层控件能用 deep 取到",
+       gui.deep(win, "bottom_Window", "options_grid") is not None)
+
+    geo = gui.event_layout(windows)
+    ok("几何来源标记为 .gui 文件", geo["source"].endswith(".gui"), geo["source"])
+    ok("窗口宽度来自 .gui（640）", geo["width"] == 640 and geo["width_total"] == 640, str(geo["width"]))
+    ok("三段高度都来自 .gui（130/110/220）",
+       (geo["top"]["height"], geo["mid"]["height"], geo["bottom"]["height"]) == (130, 110, 220),
+       str([geo["top"]["height"], geo["mid"]["height"], geo["bottom"]["height"]]))
+    ok("标题坐标与字体来自 .gui",
+       (geo["title"]["x"], geo["title"]["y"], geo["title"]["font"]) == (20, 74, "hoi4_typewriter22"),
+       str(geo["title"]))
+    ok("描述左边距来自 .gui（35）", geo["desc"]["x"] == 35, str(geo["desc"]))
+    ok("图片坐标来自 .gui（9,9）",
+       (geo["picture"]["x"], geo["picture"]["y"]) == (9, 9), str(geo["picture"]))
+    ok("裁切图坐标与 sprite 来自 .gui",
+       (geo["clip"]["x"], geo["clip"]["y"], geo["clip"]["sprite"]) == (-1, 39, "GFX_clip"),
+       str(geo["clip"]))
+    ok("选项格子坐标来自 .gui（220,2）",
+       (geo["options"]["x"], geo["options"]["y"]) == (220, 2), str(geo["options"]))
+    ok("选项按钮尺寸与底图取自独立窗口（320×52）",
+       geo["options"]["slot"] == (320, 52) and geo["options"]["bg"] == "GFX_opt",
+       str(geo["options"]))
+
+    # 没有 .gui 时必须原样退回内置几何：预览在无游戏目录的机器上也要能开。
+    fallback = gui.event_layout({})
+    ok("没有 .gui 时退回内置原版几何（581×427）",
+       fallback["width"] == 581 and fallback["height_total"] == 427
+       and fallback["source"].startswith("内置"), fallback["source"])
+    ok("内置几何里三段高度是原版实测值（121/100/206）",
+       (fallback["top"]["height"], fallback["mid"]["height"],
+        fallback["bottom"]["height"]) == (121, 100, 206), str(fallback["top"]))
+    ok("示例 mod 没有覆盖 .gui，确实走内置几何",
+       gui.windows_for(SAMPLE) == {} and gui.event_layout(gui.windows_for(SAMPLE))["width"] == 581)
+    ok("百分比数值也能解析", gui._num("50%") == 50 and gui._num("abc", 7) == 7)
 
 
 # --------------------------------------------------------------------------- #
@@ -1677,6 +1804,44 @@ def test_tools() -> None:
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+# --------------------------------------------------------------------------- #
+# 14b. 改盘即刷新（tools/kiant-hoi4-watch.py）
+# --------------------------------------------------------------------------- #
+
+def test_watch() -> None:
+    section("14b. 改盘即刷新")
+    import importlib.util
+    path = os.path.join(ROOT, "tools", "kiant-hoi4-watch.py")
+    spec = importlib.util.spec_from_file_location("kiant_hoi4_watch", path)
+    watch = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(watch)
+
+    ok("脚本能被导入（不是只能当命令行跑）",
+       hasattr(watch, "main") and hasattr(watch, "scan_signature"))
+    sig, files = watch.scan_signature(SAMPLE)
+    ok("变更签名带文件数，且和实际对上", sig.split("|")[0] == str(files), sig)
+    ok("没给游戏目录时不建贴图库（离线不炸）", watch.library(SAMPLE, "") is None)
+    ok("descriptor.mod 里的名字/版本能读出来",
+       watch.descriptor_name(SAMPLE) == ("Modkit Sample", "0.1.0"),
+       str(watch.descriptor_name(SAMPLE)))
+    ok("页面脚本同时用 /state 和 /render（轮询 + 重渲两条腿）",
+       "/state" in watch.PAGE and "/render" in watch.PAGE)
+    ok("外壳页把占位符填掉了（名字/间隔都替换）",
+       "__INTERVAL__" not in watch.page_html() and "__NAME__" not in watch.page_html())
+
+    tmp = tempfile.mkdtemp(prefix="modkit-watch-")
+    try:
+        out = os.path.join(tmp, "watch.html")
+        rc = watch.main([SAMPLE, "--once", "--no-icons", "--out", out])
+        ok("--once 返回 0", rc == 0, str(rc))
+        ok("--once 真的写出了 HTML", os.path.isfile(out) and os.path.getsize(out) > 8000,
+           str(os.path.getsize(out) if os.path.exists(out) else 0))
+        ok("写出来的是与 MCP 预览同一个页面",
+           '<article class="ewin">' in open(out, encoding="utf-8").read())
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def test_loc_quirks() -> None:
     """原版真实写法 vs 校验器的假设。
 
@@ -2099,8 +2264,8 @@ def main() -> int:
     print(f"\033[1mHOI4 Modkit selftest\033[0m  python {sys.version.split()[0]}")
     tests = [
         test_parser, test_sample, test_broken, test_planner,
-        test_preview, test_scaffolder, test_kb, test_mcp, test_remote, test_tiers,
-        test_playbook, test_platform_state, test_structure_doc, test_tools,
+        test_preview, test_gui, test_scaffolder, test_kb, test_mcp, test_remote, test_tiers,
+        test_playbook, test_platform_state, test_structure_doc, test_tools, test_watch,
         test_loc_quirks, test_conditional_blocks, test_vanilla_quirks,
     ]
     for fn in tests:

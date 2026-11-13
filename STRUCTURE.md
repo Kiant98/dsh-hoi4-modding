@@ -97,34 +97,36 @@
 
 ---
 
-## 五、`mcp-server/`：13 个 `.py` + 1 个 `README.md`
+## 五、`mcp-server/`：14 个 `.py` + 1 个 `README.md`
 
 纯标准库，零依赖，`python server.py` 就能跑。
 
 | 文件 | 干什么 | 行数 |
 |---|---|---|
-| `server.py` | MCP 协议循环（stdio JSON-RPC）+ 20 个工具的注册与参数 schema | 1120 |
+| `server.py` | MCP 协议循环（stdio JSON-RPC）+ 20 个工具的注册与参数 schema | 1123 |
 | `checks.py` | 结构校验：descriptor、本地化 BOM/键、括号、重复 id、事件 namespace、日志分析、覆盖比对 | 1582 |
 | `kb.py` | 知识库：索引构建、FTS5 双索引检索、范例查找、符号溯源、两级资料库 | 1472 |
 | `validators.py` | 可插拔的按类型校验器（10 个：technology/assets/sprites/ui/on_actions/history/defines/music/focus_tree/loc_commands） | 1192 |
-| `selftest.py` | 335 项自检（含文档一致性检查 + 独立工具的单测 + 原版真实写法的回归），改完核心模块就跑 | 2137 |
+| `selftest.py` | 368 项自检（含文档一致性检查 + 独立工具的单测 + 原版真实写法的回归），改完核心模块就跑 | 2302 |
 | `playbook.py` | 错题本与方案库检索：按症状加权匹配、条目完整性检查 | 533 |
 | `scaffolder.py` | 12 类内容骨架生成，自动带 BOM 本地化 | 555 |
-| `preview.py` | 自包含 HTML 预览：游戏皮肤、国策树按真实坐标渲染并画连线、内联贴图 | 627 |
-| `assets.py` | 游戏素材管线：`.gfx` sprite 索引、DDS/TGA 解码、缩放与 PNG data URI 编码 | 612 |
+| `preview.py` | 自包含 HTML 预览：游戏皮肤、国策树、按 `.gui` 几何拼的事件窗、内联贴图 | 771 |
+| `gui.py` | 只读 `.gui` 窗口树：抽控件几何（事件窗用它摆位），读不到就退回内置原版数值 | 296 |
+| `assets.py` | 游戏素材管线：`.gfx` sprite 索引、DDS/TGA 解码、缩放与 PNG data URI 编码 | 646 |
 | `cw.py` | Clausewitz 解析器：词法/语法 → 带行号的 AST。所有下游模块的地基 | 356 |
 | `remote.py` | 远端知识库同步（tarball + manifest + 缓存回退） | 290 |
 | `planner.py` | 八阶段计划跟踪，写 `plan.json` + `ROADMAP.md` | 210 |
 | `bench.py` | 真实模组上量耗时与假阳性 | 89 |
 
-合计 10775 行，零第三方依赖。
+合计 11417 行，零第三方依赖。
 
 依赖方向严格单向：
 
 ```
 server  →  checks / validators / kb / playbook / preview / planner / scaffolder  →  cw
+                                                    │                                 ↑
+                                                    ├→ gui（读 .gui 几何）────────────┘
                                                     └→ assets（只依赖标准库）
-                                                                                    ↑
                                                                           只有 cw 不知道上面任何东西
 ```
 

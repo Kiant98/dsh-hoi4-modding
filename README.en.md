@@ -14,7 +14,7 @@ A modding toolkit for Hearts of Iron IV. One modding-engineer agent, 15 skills, 
 
 Built for HOI4 1.19.x (Operation Postern). Pure Python standard library, zero dependencies.
 
-> Current version **3.3.0** (2026-11-13). GitHub: [Kiant98/dsh-hoi4-modding](https://github.com/Kiant98/dsh-hoi4-modding) ｜ npm: [dsh-hoi4-modding](https://www.npmjs.com/package/dsh-hoi4-modding)
+> Current version **3.4.0** (2026-11-13). GitHub: [Kiant98/dsh-hoi4-modding](https://github.com/Kiant98/dsh-hoi4-modding) ｜ npm: [dsh-hoi4-modding](https://www.npmjs.com/package/dsh-hoi4-modding)
 
 ## What it can do: three real outputs
 
@@ -223,11 +223,19 @@ Adding a check is three steps: write a function, add a decorator, done. See [ARC
 kiant_hoi4_preview
 ```
 
-Generates one self-contained HTML: focus trees drawn at their real x/y coordinates with prerequisite links, event/decision/idea cards with parsed text, localisation coverage and the issue list.
+Generates one self-contained HTML: focus trees drawn at their real x/y coordinates with prerequisite links. Events are not simplified cards — they are assembled from the real geometry in `interface/eventwindow.gui`: the paper frame, the clipboard, the title font, the picture slot and the option buttons' positions and sizes all match the game (if the `.gui` is unreadable it falls back to the built-in vanilla numbers). Decision/idea cards carry parsed text, alongside localisation coverage and the issue list.
 
 With a local game install it goes one step further: sprite names are resolved against vanilla's own `.gfx` files and the DDS textures are decoded and inlined straight into the HTML. A focus pointing at the wrong icon, an event picture that never got wired up, an idea using the wrong series — all visible without launching the game. Textures come from your own installation and are never redistributed; pass `icons=false` to turn it off.
 
-Zero external dependencies, plain HTML, double-click to open. About 13 KB without icons, about 100 KB with them (the images dominate). Overlapping coordinates, wrong icons and unwritten text are visible at this stage.
+Zero external dependencies, plain HTML, double-click to open. About 14 KB without icons, about 570 KB with icons and event windows (frames are inlined at native size; the images dominate). Overlapping coordinates, wrong icons and unwritten text are visible at this stage.
+
+To see a change the moment you save it, use the watch script:
+
+```bash
+python tools/kiant-hoi4-watch.py path/to/your_mod --game --open
+```
+
+It starts a small server on `127.0.0.1` and opens a browser tab: `/state` only compares file signatures (cheap), `/render` does the actual rendering, so the page refreshes within a second of a save and costs almost nothing while idle. `--once` renders without starting the server (written to `<mod>/.modkit/preview.html`), `--no-icons` disables textures, `--interval` sets the poll interval and `--port` picks another port.
 
 ### 5. Planning: keep long tasks on track
 
@@ -257,8 +265,8 @@ Settings → Plugins → search `dsh-hoi4-modding` → install (click update to 
 git clone https://github.com/Kiant98/dsh-hoi4-modding.git dsh-hoi4-modding
 cd dsh-hoi4-modding
 
-# Route 3: download the release asset dsh-hoi4-modding-3.3.0.zip
-unzip dsh-hoi4-modding-3.3.0.zip -d dsh-hoi4-modding
+# Route 3: download the release asset dsh-hoi4-modding-3.4.0.zip
+unzip dsh-hoi4-modding-3.4.0.zip -d dsh-hoi4-modding
 cd dsh-hoi4-modding
 
 # Route 4: from npm (since 3.1.0)
@@ -395,7 +403,7 @@ Third-party mods are excluded by default. With 40 workshop mods installed, index
 After changing a core module, run this instead of clicking tools by hand:
 
 ```bash
-python mcp-server/selftest.py                 # 335 assertions in seventeen groups: parser / validation / planning / preview / scaffolding / KB / protocol / remote / two tiers / error book / status / doc consistency / standalone tools / real localisation / conditional blocks / vanilla tolerance
+python mcp-server/selftest.py                 # 368 assertions in seventeen groups: parser / validation / planning / preview / scaffolding / KB / protocol / remote / two tiers / error book / status / doc consistency / standalone tools / real localisation / conditional blocks / vanilla tolerance
 python mcp-server/bench.py <mod path>         # timings on a real mod, plus false positives
 ```
 
@@ -475,19 +483,20 @@ dsh-hoi4-modding/
 ├── PUBLISHING-LIBRARY.md    author side: keeping local and platform libraries consistent
 ├── agents/kiant-hoi4-modder.md    full-lifecycle agent definition
 ├── skills/                  15 skills, one folder each
-├── mcp-server/              zero-dependency Python, 13 modules
+├── mcp-server/              zero-dependency Python, 14 modules
 │   ├── server.py            20 tools + MCP protocol
 │   ├── checks.py            structural validation
 │   ├── kb.py                index and two-tier search
 │   ├── cw.py                Clausewitz parser (foundation)
 │   ├── validators.py        10 pluggable type validators
 │   ├── playbook.py          error book and solutions lookup
-│   ├── preview.py           offline preview renderer
+│   ├── preview.py           offline preview renderer (focus tree / event window / cards)
+│   ├── gui.py               read-only .gui: control geometry for the event window
 │   ├── assets.py            texture pipeline: DDS/TGA → inline PNG
 │   ├── scaffolder.py        12 content scaffolds
 │   ├── remote.py            remote KB sync
 │   ├── planner.py           staged planning
-│   ├── selftest.py          335 self-tests
+│   ├── selftest.py          368 self-tests
 │   └── bench.py             stress test on real mods
 ├── references/              163 docs in 16 folders (upstream MIT + authored + built)
 │   ├── _index.md            master routing: "I want X → read which doc"
@@ -563,7 +572,7 @@ The framework is complete and has run on real data:
 | `examples/broken_mod` | 12 files | — | 0.1 s | 18 injected defects, all 14 assertions hit |
 | vanilla 1.19.4.2 | 6167 files / 260k entries / 50 official docs | 16 s | — | 553 effects + 596 triggers queryable |
 
-335 self-tests green, covering the parser, example mods, failure fixtures (12 defect assertions all hit), planner, preview (including focus-coordinate resolution), scaffolding, KB, MCP protocol handshake, remote sync, two-tier library, error book and solutions lookup, platform status hints, structure-document consistency, standalone tools (DDS header and block rounding, lint's three error classes and false-positive boundary), conditional blocks, and tolerance of real vanilla writing.
+368 self-tests green, covering the parser, example mods, failure fixtures (12 defect assertions all hit), planner, preview (including focus-coordinate resolution), scaffolding, KB, MCP protocol handshake, remote sync, two-tier library, error book and solutions lookup, platform status hints, structure-document consistency, standalone tools (DDS header and block rounding, lint's three error classes and false-positive boundary), conditional blocks, and tolerance of real vanilla writing.
 
 ## How far can you trust the validator
 

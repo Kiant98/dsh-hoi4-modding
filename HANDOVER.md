@@ -1,13 +1,13 @@
 # 交接文件（HANDOVER）
 
 > 写给接手本项目的人（或未来的自己）。读完这一篇 + `STRUCTURE.md` + `ARCHITECTURE.md`，你就能安全地开始改代码。
-> 交接日期：2026-11-13 ｜ 当前版本：3.3.0 ｜ 自检 335/335 全绿 ｜ 变异 17/17 ｜ 发布：GitHub tag v3.3.0 + npm dsh-hoi4-modding@3.3.0（DeepSeek Harness 组合包）
+> 交接日期：2026-11-13 ｜ 当前版本：3.4.0 ｜ 自检 368/368 全绿 ｜ 变异 17/17 ｜ 发布：GitHub tag v3.4.0 + npm dsh-hoi4-modding@3.4.0（DeepSeek Harness 组合包）
 
 ---
 
 ## 一、项目一句话
 
-**dsh-hoi4-modding**：HOI4 mod 开发的 DeepSeek Harness 组合包 + MCP 工具。装进 DSH 后自动注册 15 个技能、挂载 20 个工具（校验/知识库/脚手架/预览/排障），纯 Python 标准库零依赖；17 个模块 10775 行 + 194 篇文档。校验器全部对照原版 1.19.4.2 全量实证。
+**dsh-hoi4-modding**：HOI4 mod 开发的 DeepSeek Harness 组合包 + MCP 工具。装进 DSH 后自动注册 15 个技能、挂载 20 个工具（校验/知识库/脚手架/预览/排障），纯 Python 标准库零依赖；18 个模块 11417 行 + 194 篇文档。校验器全部对照原版 1.19.4.2 全量实证。
 
 ## 二、代码地图（改哪去哪）
 
@@ -17,10 +17,10 @@
 | `checks.py` | 1582 | 结构校验主体。`resolve_mod_root` 的相对 path 双基准逻辑要特别小心 | 高 |
 | `kb.py` | 1472 | SQLite+FTS5 知识库。增量构建的 stale 清理、中文 2 字滑窗都是修复过的雷区 | 高 |
 | `validators.py` | 1192 | 10 个按类型校验器。**遍历列表块一律用 `cw.entries()`**，不要用 `stmts()`（裸 token 会整块静默跳过） | 中 |
-| `server.py` | 1120 | MCP 协议 + 20 个工具注册。工具 schema 与文档数字受自检盯防 | 中 |
-| `selftest.py` | 2137 | 335 项断言。**文档数字一致性也在里面**（篇数/行数/条数漂移会被抓） | 低 |
-| `scaffolder/preview/assets/planner/remote/playbook` | ~2200 | 生成/预览与贴图管线/计划/远端同步/错题本检索 | 低-中 |
-| `tools/` 4 个脚本 | — | dds 体积校验（块数必须 `(w+3)//4` 向上取整）/ lint / survey / mutate | 低 |
+| `server.py` | 1123 | MCP 协议 + 20 个工具注册。工具 schema 与文档数字受自检盯防 | 中 |
+| `selftest.py` | 2302 | 368 项断言。**文档数字一致性也在里面**（篇数/行数/条数漂移会被抓） | 低 |
+| `scaffolder/preview/gui/assets/planner/remote/playbook` | ~2700 | 生成/预览（含事件窗几何）/贴图管线/计划/远端同步/错题本检索 | 低-中 |
+| `tools/` 5 个脚本 | — | dds 体积校验（块数必须 `(w+3)//4` 向上取整）/ lint / survey / mutate / watch（改盘即刷新） | 低 |
 | `lib/index.js` | ~230 | DSH 入口：`ctx.skills.registerProvider` 注册 15 个技能；探测 python 后用内置 mcp-client 挂 `mcp-server/server.py`。**改了它要实际装一次插件验证** | 中 |
 | `cordis.patch.yml` | 4 | DSH 组合包补丁（insert 一行 `dsh-hoi4-modding`），配合 `package.json#dsh.bundle.patch`；缺了就会报 `not-bundle` | 低 |
 
@@ -80,9 +80,9 @@ python ../_verify_library.py              # 双向核对：必须「完全一致
 ## 六、30 秒上手检查
 
 ```bash
-python mcp-server/selftest.py                       # 应 335/335
+python mcp-server/selftest.py                       # 应 368/368
 python mcp-server/server.py --call kiant_hoi4_kb_stats '{}'   # 应 69102 symbols（需已建索引）
 python ../_verify_library.py                        # 应「完全一致且无重复」
 ```
 
-三条都过 = 环境正常，可以开始干活。DSH 侧再加一条：`设置 → 插件 → 搜索 dsh-hoi4-modding` 能装/更新到 3.3.0，且装完重开会话能看到 15 个技能和 20 个 `mcp__kiant_hoi4_modkit__*` 工具。若插件页提示「没有声明组合包」，先查 npm 上该版本 `package.json` 是否有 `dsh.bundle.patch`、包内是否有 `cordis.patch.yml` 与 `lib/index.js`。改任何东西之前，先读一遍你要动的模块在 `99_plugin-devlog/` 里的相关条目——那里记的每一个坑都真实踩过一次。
+三条都过 = 环境正常，可以开始干活。DSH 侧再加一条：`设置 → 插件 → 搜索 dsh-hoi4-modding` 能装/更新到 3.4.0，且装完重开会话能看到 15 个技能和 20 个 `mcp__kiant_hoi4_modkit__*` 工具。若插件页提示「没有声明组合包」，先查 npm 上该版本 `package.json` 是否有 `dsh.bundle.patch`、包内是否有 `cordis.patch.yml` 与 `lib/index.js`。改任何东西之前，先读一遍你要动的模块在 `99_plugin-devlog/` 里的相关条目——那里记的每一个坑都真实踩过一次。

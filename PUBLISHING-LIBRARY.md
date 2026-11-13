@@ -12,7 +12,7 @@
 顺序固定三步：
 
 ```
-1. 改本地  →  2. 跑自检 335 项全绿  →  3. 同步到平台
+1. 改本地  →  2. 跑自检 368 项全绿  →  3. 同步到平台
 ```
 
 跳过第 2 步直接同步，等于把没验证的内容发布出去。
@@ -164,7 +164,7 @@ space.workspace.rename-node --node-id <旧节点> --title "xxx (2.3.0 旧版)"
 
 ```bash
 # 1. 本地改完，跑自检
-python mcp-server/selftest.py          # 必须全绿，当前 335 项
+python mcp-server/selftest.py          # 必须全绿，当前 368 项
 
 # 2. 确认本地 md 清单（数量应与平台一致）
 find . -name "*.md" -not -path "*/__pycache__/*" | wc -l
