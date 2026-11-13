@@ -490,6 +490,38 @@ def test_preview() -> None:
         )
         ok("shared 锚点参与解算", shared_placed.get("shared_top") == (5, 0), str(shared_placed))
         ok("锚定到 shared 的节点落在正确格子", shared_placed.get("A") == (5, 1), str(shared_placed))
+
+        # 贴图。CI 上没有游戏目录，所以用假库把内联 / 去重 / 缺图 / 预算四条
+        # 路径都走一遍——真实的 DDS 解码由 assets.py 自己的用例覆盖。
+        class _FakeAssets:
+            def __init__(self, known):
+                self.known = set(known)
+                self.uri = "data:image/png;base64,AAA"
+
+            def data_uri(self, name, tw, th):
+                return self.uri if name in self.known else ""
+
+        fake = _FakeAssets({"GFX_focus_generic_industry_2"})
+        out2 = os.path.join(tmp, "preview-icons.html")
+        r2 = preview.render(
+            SAMPLE, out2,
+            name="Modkit Sample", version="0.1.0",
+            definitions=bundle["definitions"], loc=loc,
+            issues=report["issues"], assets=fake,
+        )
+        icon_html = open(out2, encoding="utf-8").read()
+        ok("贴图以 data URI 内联", "data:image/png;base64" in icon_html)
+        ok("每张图一条 CSS 规则",
+           icon_html.count("background-image:url(") == r2["assets"]["images"], str(r2["assets"]))
+        ok("引用不到的贴图留占位不出图", r2["assets"]["missing"] > 0, str(r2["assets"]))
+
+        sp = preview._Sprites(_FakeAssets({"GFX_shared"}))
+        a = sp.icon(["GFX_shared"], (56, 49))
+        b = sp.icon(["GFX_shared"], (56, 49))
+        ok("同一贴图多次引用只留一条规则", bool(a) and a == b and len(sp.rules) == 1, str(len(sp.rules)))
+
+        sp0 = preview._Sprites(_FakeAssets({"GFX_shared"}), budget=0)
+        ok("预算为 0 时一张图也不出", sp0.icon(["GFX_shared"], (56, 49)) == "")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 

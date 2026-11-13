@@ -29,6 +29,7 @@ from typing import Any, Callable
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import assets
 import checks
 import cw
 import kb
@@ -453,6 +454,23 @@ def tool_preview(args: dict) -> Any:
                 version = ver
             break
 
+    # 贴图：显式关掉就不扫；否则按「mod 自己 → 原版」建库。原版目录优先用
+    # 参数，其次知识库记录的路径，最后本机自动探测——DOM 里一个问号图标都不想留。
+    lib = None
+    game_root = (args.get("game_root") or vanilla or "").strip()
+    if args.get("icons", True):
+        if not game_root:
+            try:
+                found = kb.find_game_dir()
+            except Exception:
+                found = ""
+            if found and os.path.isdir(os.path.join(found, "gfx")):
+                game_root = found
+        try:
+            lib = assets.open_library(mod_root, game_root)
+        except Exception:
+            lib = None
+
     out_path = args.get("out_path") or os.path.join(mod_root, ".modkit", "preview.html")
     result = preview.render(
         mod_root=mod_root,
@@ -462,6 +480,8 @@ def tool_preview(args: dict) -> Any:
         definitions=bundle["definitions"],
         loc=loc,
         issues=report["issues"],
+        assets=lib,
+        game_root=game_root,
     )
     result["summary"] = report["summary"]
     return result
@@ -856,7 +876,8 @@ TOOLS: dict[str, tuple[Callable[[dict], Any], dict]] = {
             "description": (
                 "生成自包含 HTML 预览，不用开游戏：国策树按真实 x/y 坐标渲染并画前置连线，"
                 "事件/决议/精神卡片带已解析文本，本地化覆盖率与问题清单一并呈现。"
-                "改完内容看一眼就能判断结构对不对。"
+                "本机有游戏目录时连同 DDS 图标和事件图一起内联（icons=false 可关），"
+                "改完内容看一眼就能判断结构对不对、观感像不像。"
             ),
             "inputSchema": {
                 "type": "object",
@@ -865,6 +886,8 @@ TOOLS: dict[str, tuple[Callable[[dict], Any], dict]] = {
                     "out_path": {"type": "string", "description": "默认 <mod>/.modkit/preview.html"},
                     "deep": {"type": "boolean"},
                     "db_path": {"type": "string"},
+                    "icons": {"type": "boolean", "description": "默认 true：内联本机游戏贴图；false 只出结构"},
+                    "game_root": {"type": "string", "description": "游戏根目录，默认自动探测"},
                 },
                 "required": ["mod_path"],
             },

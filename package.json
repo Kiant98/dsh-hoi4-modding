@@ -1,7 +1,7 @@
 {
   "name": "dsh-hoi4-modding",
-  "version": "3.2.2",
-  "description": "HOI4（钢铁雄心4）模组开发工具包（DSH 组合包）：1 个模组工程师 agent、15 个技能、20 个 MCP 工具，配 163 篇参考库与以原版 1.19.4.2 为参照的知识库。装进 DeepSeek Harness 后自动注册 15 个技能并在本地挂载 20 个工具；纯 Python 标准库零依赖，面向 1.19.x。",
+  "version": "3.3.0",
+  "description": "HOI4（钢铁雄心4）模组开发工具包（DSH 组合包）：1 个模组工程师 agent、15 个技能、20 个 MCP 工具，配 163 篇参考库与以原版 1.19.4.2 为参照的知识库。装进 DeepSeek Harness 后自动注册 15 个技能并在本地挂载 20 个工具；纯 Python 标准库零依赖；离线预览可内联本机游戏里的 DDS 图标与事件图。面向 1.19.x。",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

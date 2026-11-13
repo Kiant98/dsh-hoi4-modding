@@ -20,10 +20,12 @@ python server.py --call kiant_hoi4_validate_mod '{"mod_path": "<你的 mod 目�
 | `validators.py` | 按内容类型可插拔的校验器（科技/资产/图标/界面/钩子/历史/defines/音乐/国策树/本地化命令） |
 | `kb.py` | 知识库：索引构建、全文检索、范例查找、符号溯源、笔记 |
 | `playbook.py` | 错题本与方案库：按症状定向检索、条目完整性检查 |
-| `preview.py` | 离线 HTML 预览渲染 |
+| `preview.py` | 离线 HTML 预览渲染（游戏皮肤、贴图内联） |
+| `assets.py` | 贴图管线：`.gfx` 索引、DDS/TGA 解码、PNG data URI |
 | `planner.py` | 分阶段计划与 ROADMAP 同步 |
+| `remote.py` | 远端知识库同步与缓存回退 |
 | `scaffolder.py` | 代码生成与本地化修复 |
-| `selftest.py` | 330 项自检，改完就跑 |
+| `selftest.py` | 335 项自检，改完就跑 |
 | `bench.py` | 在真实模组上量耗时与假阳性 |
 
 依赖方向是单向的：`server → checks/validators/kb/playbook/preview/planner/scaffolder → cw`。下层不知道上层存在。`playbook.py` 只读 `references/` 下的 md，连 `cw` 都不依赖。
@@ -31,7 +33,7 @@ python server.py --call kiant_hoi4_validate_mod '{"mod_path": "<你的 mod 目�
 ## 自检
 
 ```bash
-python selftest.py                  # 330 项断言，约 10 秒
+python selftest.py                  # 335 项断言，约 10 秒
 python bench.py <模组路径>          # 真实模组压力测试，看索引/校验耗时与 error 数量
 python bench.py                     # 不带参数则列出检测到的模组
 ```

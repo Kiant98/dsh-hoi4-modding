@@ -23,7 +23,7 @@ Thanks for taking the time. Every entry in this toolkit was forced by a real mod
 ```bash
 git clone https://github.com/Kiant98/dsh-hoi4-modding.git
 cd dsh-hoi4-modding
-python mcp-server/selftest.py          # 330 项断言，必须全绿
+python mcp-server/selftest.py          # 335 项断言，必须全绿
 python mcp-server/server.py --list     # 20 个工具
 python mcp-server/server.py --call kiant_hoi4_validate_mod '{"mod_path":"examples/broken_mod"}'
 ```
@@ -32,7 +32,7 @@ python mcp-server/server.py --call kiant_hoi4_validate_mod '{"mod_path":"example
 
 ## 硬性要求 · Hard requirements
 
-1. **`python mcp-server/selftest.py` 必须全绿**（当前 330 项）。改了校验器、解析器、文档数字，都得先跑它。
+1. **`python mcp-server/selftest.py` 必须全绿**（当前 335 项）。改了校验器、解析器、文档数字，都得先跑它。
 2. **文档里的数字必须与代码一致**。自检会跨 6 份文档核对「N 个技能 / N 个工具 / N 篇文档 / N 条错题本 / 自检项数」，写错就红。
 3. **工具、技能、脚本一律 `kiant-` / `kiant_hoi4_` 前缀**。自检会拦下旧的无前缀路径。
 4. **本地化文件必须 UTF-8 with BOM**；`.mod` / `descriptor.mod` 必须无 BOM。反了就是静默失效。
